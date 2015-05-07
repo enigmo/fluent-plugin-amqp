@@ -35,9 +35,9 @@ module Fluent
     def start
       super
       @bunny.start
-      @exch = @bunny.exchange(@exchange, :type => @exchange_type.intern,
-                              :passive => @passive, :durable => @durable,
-                              :auto_delete => @auto_delete)
+      channel = @bunny.create_channel
+      @queue   = channel.queue(@key, :auto_delete => @auto_delete,:durable => @durable,
+                               :passive => @passive)
     end
 
     def shutdown
@@ -51,7 +51,7 @@ module Fluent
 
     def write(chunk)
       chunk.msgpack_each do |data|
-        @exch.publish(data, :key => @key, :persistent => @persistent)
+        @queue.publish(data.to_json, :type => @exchange_type, :key => @key, :persistent => @persistent)
       end
     end
 
