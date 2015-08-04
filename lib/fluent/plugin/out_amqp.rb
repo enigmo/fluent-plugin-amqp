@@ -16,6 +16,7 @@ module Fluent
     config_param :auto_delete, :bool, :default => false
     config_param :key, :string, :default => nil
     config_param :persistent, :bool, :default => false
+    config_param :x_dead_letter_exchange, :string, :default => nil
 
     def initialize
       super
@@ -36,8 +37,7 @@ module Fluent
       super
       @bunny.start
       channel = @bunny.create_channel
-      @queue   = channel.queue(@key, :auto_delete => @auto_delete,:durable => @durable,
-                               :passive => @passive)
+      @queue  = channel.queue(@key, queue_options)
     end
 
     def shutdown
@@ -54,6 +54,18 @@ module Fluent
         @queue.publish(data.to_json, :type => @exchange_type, :key => @key, :persistent => @persistent)
       end
     end
+
+    private
+
+      def queue_options
+        opts = { :auto_delete => @auto_delete,:durable => @durable, :passive => @passive }
+        if @x_dead_letter_exchange
+          opts.merge!({
+            :arguments => { :'x-dead-letter-exchange' => @x_dead_letter_exchange }
+          })
+        end
+        opts
+      end
 
   end
 end
